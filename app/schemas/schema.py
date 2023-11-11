@@ -1,32 +1,37 @@
 from app import ma
-from marshmallow import fields
+from marshmallow import fields, validate
 
-class UserBasicSchema(ma.Schema):
-    username = fields.String()
+class UsuarioSchema(ma.Schema):
+    id = fields.Integer()
+    nombre = fields.String()
+    apellido = fields.String()
+    contraseña = fields.String(validate=validate.Length(min=3, max=50))
+    email = fields.String()
+    activo = fields.Boolean()
 
-class UserAdminSchema(UserBasicSchema):
-    id = fields.Integer(dump_only=True)
-    password_hash = fields.String()
-    hi_username= fields.Method('get.username')
+class EntradaSchema(ma.Schema):
+    id = fields.Integer()
+    titulo = fields.String()
+    post = fields.String()
+    fecha = fields.String()
+    usuario_id = fields.Integer()
 
-    def get_username(self, obj):
-        return f'hi {obj.username}'
+    #representa la relación entre una entrada y un usuario en el JSON
+    usuario = ma.Nested(UsuarioSchema)
+    categorias = ma.Nested("CategoriaSchema", many=True)
 
-class PaisSchema(ma.Schema):
-    id = fields.Integer(dump_only=True)
-    nombre =fields.String()
+class CategoriaSchema(ma.Schema):
+    id = fields.Integer()
+    nombre = fields.String()
 
-class ProvinciaSchema(ma.Schema):
-    id = fields.Integer(dump_only=True)
-    nombre =fields.String()
-    pais =fields.Integer()
-    pais_obj=fields.Nested(
-    PaisSchema, exclude=('id',))
+class ComentarioSchema(ma.Schema):
+    id = fields.Integer()
+    contenido = fields.String()
+    fecha = fields.String()
+    usuario_id = fields.Integer()
+    entrada_id = fields.Integer()
 
-class LocalidadSchema(ma.Schema):
-    id = fields.Integer(dump_only=True)
-    nombre =fields.String()
-    pais =fields.Integer()
-    localidad = fields.Integer()
-    pais_obj=fields.Nested(
-    PaisSchema, exclude=('id',))
+    #representa la relación entre una entrada y un usuario en el JSON
+    usuario = ma.Nested(UsuarioSchema)
+    entrada = ma.Nested(EntradaSchema)
+

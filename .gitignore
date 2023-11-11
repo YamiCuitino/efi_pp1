@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+.venv/
+.env/
+
+# Logs
+logs/
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Marshmallow cache
+.marshmallow_cache/
+
+# SQLAlchemy
+*.sqlite
+
+# IDE settings
+.idea/
+.vscode/
+
+# Local configuration
+instance/
+*.ini
+*.conf
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Compiled files
+*.pyc
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+__pycache__/
+
+# Environment
+.env

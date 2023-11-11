@@ -17,7 +17,6 @@ app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY')
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-jwt = JWTManager(app)
 ma = Marshmallow(app)
 
 load_dotenv()
@@ -26,4 +25,4 @@ from app.views import view
 
 
 if __name__== "__main__":
-    app.run(host="0.0.0.6", port=5005, debug=True)
+    app.run(host="0.0.0.0", port=5005, debug=True)

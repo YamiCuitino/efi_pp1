@@ -1,9 +1,5 @@
-# Imports que son nativos de Python
-import os
-from datetime import timedelta
-
 # Imports que son nativos del Framework y Librerias
-from app import app, db, jwt
+from app import app, db
 from flask import (
     jsonify,
     redirect,
@@ -11,193 +7,279 @@ from flask import (
     request,
     url_for,
 )
-from flask_jwt_extended import (
-    create_access_token,
-    get_jwt,
-    get_jwt_identity,
-    jwt_required,
-)
+from flask.views import MethodView
+
 from werkzeug.security import (
     generate_password_hash,
     check_password_hash
 )
-
 # Imports de variables generadas por nosotros
 from app.models.models import (
-    Localidad,
-    Pais,
-    Persona,
-    Provincia,
-    User,
+    Usuario,
+    Entrada,
+    Comentario,
+    Categoria,
 )
 from app.schemas.schema import (
-    LocalidadSchema,
-    PaisSchema,
-    ProvinciaSchema,
-    UserAdminSchema,
-    UserBasicSchema    
+    UsuarioSchema,
+    EntradaSchema,
+    ComentarioSchema,
+    CategoriaSchema
 )
 
-@app.route("/users")
-@jwt_required()
-def get_all_users():
-    additional_info = get_jwt() #obtengo info adicional del token
-    page = request.args.get('page', 1, type=int)
-    can= request.args.get('can',1000, type=int)
-    users = db.session.query(User).paginate(
-        page=page , per_page=can
-    )
-    print (
-        url_for(
-            'get_all_users',page=users.next_num
-        ) if users.has_next else None
-    )
-    if additional_info['is_admin']:
-        return jsonify(
-            {
-                'results': UserAdminSchema().dump(users.items, many=True),
-                'next': url_for('get_all_users',page=users.next_num
-                 ) if users.has_next else None,
-                 'prev': url_for('get_all_users',page=users.prev_num
-                 ) if users.has_prev else None
-            }
+
+class UsuarioView(MethodView):
+    def get(self, usuario_id=None):
+        if usuario_id is not None:
+            usuario = Usuario.query.get(usuario_id)
+            if usuario:
+                usuario_schema = UsuarioSchema().dump(usuario)
+                return jsonify(usuario_schema)
+            else:
+                return jsonify(MENSAJE="No se encontro el usuario, por favor ingrese un usuario valido"), 404
+        else:
+            usuarios = Usuario.query.all()
+            allUsuarios = UsuarioSchema(many=True).dump(usuarios)
+            return jsonify(allUsuarios)
+
+    def post(self):
+        data = request.get_json()
+        nombre = data.get('nombre')
+        apellido = data.get('nombre')
+        email = data.get('email')
+        contraseña = data.get('contraseña')
+
+        nuevo_usuario = Usuario(
+            nombre=nombre,
+            apellido=apellido,
+            email=email,
+            contraseña=contraseña,
         )
-    return jsonify(
-            {
-                'results': UserBasicSchema().dump(users.items, many=True),
-                'next': url_for('get_all_users',page=users.next_num
-                 ) if users.has_next else None,
-                 'prev': url_for('get_all_users',page=users.prev_num
-                 ) if users.has_prev else None
-            }
-    )
-@app.context_processor
-def inject_paises():
-    countries = db.session.query(Pais).all()
-    return dict(
-        paises=countries   
-    )
+        db.session.add(nuevo_usuario)
+        db.session.commit()
+        return jsonify(MENSAJE=f"El usuario {nombre} {apellido} se creo correctamente")
 
-@app.route("/paises")
-def get_all_paises():
-    paises = Pais.query.all()
-    paises_schema = PaisSchema().dump(paises, many=True)
-    return jsonify(paises_schema)
+    def put(self, usuario_id):
+        usuario = Usuario.query.get(usuario_id)
+        if not usuario:
+            return jsonify(MENSAJE="Usuario no encontrado"), 404
 
-@app.route("/provincias")
-def get_all_provincias():
-    provincias= Provincia.query.all()
-    provincia_schema = ProvinciaSchema().dump(provincias, many=True)
-    return jsonify(provincia_schema)
+        data = request.get_json()
+        nombre = data.get('nombre')
+        apellido = data.get('apellido')
+        email  = data.get('email')
+        contraseña = data.get('contraseña')
+        #reemplaza por los nuevos datos
+        usuario.nombre = nombre
+        usuairo.apellido= apellido
+        usuario.email = email
+        usuario.contraseña = contraseña
+       #sube los cambios a la bd
+        db.session.commit()
+        return jsonify(MENSAJE=f"El usuario {nombre} {apellido} se actualizo correctamente")
 
-@app.route("/localidades")
-def get_all_localidades():
-    localidades= Localidad.query.all()
-    localidad_schema = LocalidadSchema().dump(localidades, many=True)
-    return jsonify(localidad_schema)
+    def delete(self, usuario_id):
+        usuario = Usuario.query.get(usuario_id)
+        if not usuario:
+            return jsonify(MENSAJE="Usuario no encontrado"), 404
 
-@app.context_processor
-def inject_idiomas():
-    return dict(
-        lang=['US','ES', 'FR']   
-    )
+        db.session.delete(usuario)
+        db.session.commit()
+        return jsonify(MENSAJE=f"El usuario {nombre} {apellido} elimino correctamente")
 
-@app.route('/')
-def index():
-    return render_template(
-        'index.html'
-    )
+usuario_view = UsuarioView.as_view('usuario_view')
+app.add_url_rule('/usuario/', view_func=usuario_view, methods=['GET', 'POST'])
+app.add_url_rule('/usuario/<int:usuario_id>', view_func=usuario_view, methods=['GET', 'PUT', 'DELETE'])
 
-@app.route('/agregar_pais', methods=['POST'])
-def nuevo_pais():
-    if request.method=='POST':
-        nombre_pais = request.form['nombre']
+class EntradaView(MethodView):
+    def get(self, entrada_id=None):
+        if entrada_id is not None:
+            entrada = Entrada.query.get(entrada_id)
+            if entrada:
+                entrada_schema = PostSchema().dump(entrada)
+                return jsonify(entrada_schema)
+            else:
+                return jsonify(MENSAJE="Post no encontrado"), 404
+        else:
+            entradas = Entrada.query.all()
+            entradas_schema = PostSchema(many=True).dump(entradas)
+            return jsonify(entradas_schema)
 
-        # Inicializo el objeto
-        nuevo_pais = Pais(nombre=nombre_pais)
-        # Preparo el objeto para enviarlo a la base de datos
-        db.session.add(nuevo_pais)
-        # Envio el objeto
+    def post(self):
+        data = request.get_json()
+        titulo = data.get("titulo")
+        post = data.get("post")
+        fecha = data.get("fecha")
+        usuario_id = data.get("usuario_id")
+        categorias = data.get("categorias")
+
+        nueva_entrada = Post(
+            titulo=titulo,
+            post=post,
+            fecha=fecha,
+            usuario_id=usuario_id
+        )
+
+        if categorias:
+            for categoria_id in categorias:
+                categoria = Categoria.query.get(categoria_id)
+                if categoria:
+                    nueva_entrada.categorias.append(categoria)
+
+        db.session.add(nueva_entrada)
         db.session.commit()
 
-        return redirect(url_for('index'))
+        return jsonify(MENSAJE="La nueva entrada se creo correctamente")
 
-@app.route('/borrar_pais/<id>')
-def borrar_pais(id):
+    def put(self, entrada_id):
+        entrada = Entrada.query.get(entrada_id)
+        if not entrada:
+            return jsonify(MENSAJE="Entrada no encontrada"), 404
 
-    pais = Pais.query.get(id)
-    db.session.delete(pais)
-    db.session.commit()
-    return redirect(url_for('index'))
+        data = request.get_json()
+        titulo = data.get("titulo")
+        post = data.get("post")
+        fecha = data.get("fecha")
+        usuario_id = data.get("usuario_id")
+        categorias = data.get("categorias")
+        #remplaza por los nuevos datos
+        entrada.titulo = titulo
+        entrada.post = post
+        entrada.fecha = fecha
+        entrada.usuario_id = usuario_id
 
-@app.route('/add_user', methods=['post'])
-def add_user():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    is_admin = data.get('is_admin')
-    password_hash = generate_password_hash(
-        password, method='pbkdf2', salt_length=8
+        
+        entrada.categorias.clear() # Elimina 
+
+        if categorias:
+            for categoria_id in categorias:
+                categoria = Categoria.query.get(categoria_id)
+                if categoria:
+                    entrada.categorias.append(categoria)
+
+        db.session.commit()
+        return jsonify(MENSAJE=f"La entrada se actualizo correctamente")
+
+    def delete(self, entrada_id):
+        entrada = Entrada.query.get(entrada_id)
+        if not entrada:
+            return jsonify(MENSAJE="Entrada no encontrada"), 404
+
+        db.session.delete(entrada)
+        db.session.commit()
+        return jsonify(MENSAJE="La entrada se elimino correctamente")
+
+entrada_view = EntradaView.as_view('entrada_view')
+app.add_url_rule('/entrada/', view_func=entrada_view, methods=['GET', 'POST'])
+app.add_url_rule('/entrada/<int:entrada_id>', view_func=entrada_view, methods=['GET', 'PUT', 'DELETE'])
+
+class CategoriaView(MethodView):
+    def get(self, categoria_id=None):
+        if categoria_id is not None:
+            categoria = Categoria.query.get(categoria_id)
+            if categoria:
+                categoria_schema = CategoriaSchema().dump(categoria)
+                return jsonify(categoria_schema)
+            else:
+                return jsonify(MENSAJE="Categoria no encontrada"), 404
+        else:
+            categorias = Categoria.query.all()
+            categorias_schema = CategoriaSchema(many=True).dump(categorias)
+            return jsonify(categorias_schema)
+
+    def post(self):
+        data = request.get_json()
+        nombre = data.get('nombre')
+
+        nueva_categoria = Categoria(
+            nombre=nombre
         )
-    
-    nuevo_usuario = User(username=username,
-     password_hash=password_hash,
-     is_admin= is_admin
-    )
-    db.session.add(nuevo_usuario)
-    db.session.commit()
+        db.session.add(nueva_categoria)
+        db.session.commit()
+        return jsonify(MENSAJE=f"la categoria {nombre}  se creo correctamente")
 
-    return jsonify({
-        "Se recibio la data":"OK",
-        "username":username,
-        "password_hash":password_hash
-        }, 200)
+    def put(self, categoria_id):
+        categoria = Categoria.query.get(categoria_id)
+        if not categoria:
+            return jsonify(MENSAJE="Categoría no encontrada"), 404
 
-@app.route('/login')
-def login():
-    data = request.authorization
-    username = data.get('username')
-    password = data.get('password')
+        data = request.get_json()
+        nombre = data.get('nombre')
+        #reemplaza los datos
+        categoria.nombre = nombre
+        #sube a la bd
+        db.session.commit()
+        return jsonify(MENSAJE=f"La categoría {nombre} se actualizo correctamente")
 
-    user = User.query.filter_by(username=username).first()
+    def delete(self, categoria_id):
+        categoria = Categoria.query.get(categoria_id)
+        if not categoria:
+            return jsonify(MENSAJE="Categoría no encontrada"), 404
 
-    #check_password_hash(contraseña guardada, contraseña recibida)
-    if user and check_password_hash(user.password_hash, password):
-        access_token = create_access_token(
-            identity=username,
-            expires_delta=timedelta(minutes=20),
-            additional_claims=dict(
-                is_admin=user.is_admin,
-            )
+        db.session.delete(categoria)
+        db.session.commit()
+        return jsonify(MENSAJE=f"la categoría {nombre} se elimino correctamente")
+
+categoria_view = CategoriaView.as_view('categoria_view')
+app.add_url_rule('/categoria/', view_func=categoria_view, methods=['GET', 'POST'])
+app.add_url_rule('/categoria/<int:categoria_id>', view_func=categoria_view, methods=['GET', 'PUT', 'DELETE'])
+
+class ComentarioView(MethodView):
+    def get(self, comentario_id=None):
+        if comentario_id is not None:
+            comentario = Comentario.query.get(comentario_id)
+            if comentario:
+                comentario_schema = ComentarioSchema().dump(comentario)
+                return jsonify(comentario_schema)
+            else:
+                return jsonify(MENSAJE="Comentario no encontrado"), 404
+        else:
+            comentarios = Comentario.query.all()
+            comentarios_schema = ComentarioSchema(many=True).dump(comentarios)
+            return jsonify(comentarios_schema)
+
+    def post(self):
+        data = request.get_json()
+        contenido = data.get("contenido")
+        fecha = data.get("fecha")
+        usuario_id = data.get("usuario_id")
+        entrada_id = data.get("entrada_id")
+
+        comentario_nuevo = Comentario(
+            contenido=contenido,
+            fecha=fecha,
+            usuario_id=usuario_id,
+            entrada_id=entrada_id
         )
-        return jsonify({"ok":access_token})
-    return jsonify(Error="No pude generar el token"),400
+        db.session.add(comentario_comentario)
+        db.session.commit()
+        return jsonify(MENSAJE="El comentario se creo correctamente")
 
-@app.route("/ruta_restringida")
-@jwt_required()
-def ruta_restringida():
-    current_user = get_jwt_identity()
-    additional_info = get_jwt()
-    if additional_info['user_type']==1:
-        return jsonify(
-            {
-                "Mensaje":f"El usuario {current_user} tiene acceso a esta ruta",
-                "Info Adicional": additional_info
-            }
-        )
-    return jsonify(
-            {
-                "Mensaje":f"El usuario {current_user} no tiene acceso a esta ruta",
-            }
-        )
+    def put(self, comentario_id):
+        comentario = Comentario.query.get(comentario_id)
+        if not comentario:
+            return jsonify(MENSAJE="Comentario no encontrado"), 404
 
+        data = request.get_json()
+        contenido = data.get("contenido")
 
+        comentario.contenido = contenido
 
+        db.session.commit()
+        return jsonify(MENSAJE="Comentario actualizado correctamente")
 
-@jwt.invalid_token_loader
-def unauthorized_user(reason):
-    return jsonify(mensaje=f"Acceso denegado porque : {reason}"), 401
+    def delete(self, comentario_id):
+        comentario = Comentario.query.get(comentario_id)
+        if not comentario:
+            return jsonify(MENSAJE="Comentario no encontrado"), 404
 
+        db.session.delete(comentario)
+        db.session.commit()
+        return jsonify(MENSAJE="El comentario se elimino correctamente")
+
+comentario_view = ComentarioView.as_view('comentario_view')
+app.add_url_rule('/comentario/', view_func=comentario_view, methods=['GET', 'POST'])
+app.add_url_rule('/comentario/<int:comentario_id>', view_func=comentario_view, methods=['GET', 'PUT', 'DELETE'])
 
 
 if  __name__=="__main__":

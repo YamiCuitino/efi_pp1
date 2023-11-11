@@ -1,71 +1,66 @@
 from app import db
 from sqlalchemy import ForeignKey
 
-class User(db.Model):
-    __tablename__ = 'user'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True, nullable=False)
-    password_hash = db.Column(db.String(100), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)
 
-class Pais(db.Model):
-    __tablename__ = 'pais'
+
+class Usuario(db.Model):
+    __tablename__= 'usuario'
 
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)
-
-    def __str__(self):
-        return self.nombre
-
-class Provincia(db.Model):
-    __tablename__ = 'provincia'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)
-    pais = db.Column(
-        db.Integer,
-        ForeignKey('pais.id'),
-        nullable=False
-    )
-
-    pais_obj = db.relationship('Pais')
-
-    def __str__(self):
-        return self.nombre
-
-    
-    
-class Localidad(db.Model):
-    __tablename__ = 'localidad'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)
-    provincia = db.Column(
-        db.Integer,
-        ForeignKey('provincia.id'),
-        nullable=False
-    )
-    provincia_obj = db.relationship('Provincia')
-
-    def __str__(self):
-        return self.nombre
-    
-class Persona(db.Model):
-    __tablename__ = 'persona'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)
+    nombre = db.Column(db.String(100), nullable = False)
+    contraseña = db.Column(db.String(100), nullable = False)
     apellido = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False)
-    nacimiento = db.Column(db.Date, nullable=False)
     activo = db.Column(db.Boolean, nullable=False)
-    telefono = db.Column(db.Integer, nullable=True)
-
-    localidad = db.Column(
-        db.Integer,
-        ForeignKey('localidad.id'),
-        nullable=False
-    )
 
     def __str__(self):
-        return f"{self.nombre} - {self.apellido}"
+        return self.nombre
+
+class Entrada(db.Model):
+    __tablename__= 'post'
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(100), nullable=False)
+    post = db.Column(db.String(1000), nullable=False)
+    fecha = db.Column(db.String(100), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+
+     #relaciones
+    usuario = db.relationship('Usuario', backref=db.backref('posts', lazy=True))
+    categorias = db.relationship("Categoria", secondary="categoria_entrada",backref=db.backref('posts', lazy=True))
+
+    def __str__(self):
+        return self.titulo
+
+class Categoria(db.Model):
+    __tablename__ = 'categoria'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(50), nullable=False)
+
+    def __str__(self):
+        return self.nombre
+
+#relacion muchos/muchos entre entrada y categoria
+entrada_categoria = db.Table('post_categoria', 
+    db.Column('entrada_id', db.Integer, db.ForeignKey('entrada.id'), primary_key=True),
+    db.Column('categoria_id', db.Integer, db.ForeignKey('categoria.id'), primary_key=True)
+)
+
+class Comentario(db.Model):
+    __tablename__ = 'comentario'
+
+    id = db.Column(db.Integer, primary_key=True)
+    contenido = db.Column(db.String(100), nullable=False)
+    fecha = db.Column(db.String(100), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    entrada_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+
+    #relaciones
+    usuario = db.relationship('Usuario',backref=db.backref('comentarios', lazy=True))
+    entrada = db.relationship('Post',backref=db.backref('comentarios', lazy=True))
+
+    def __str__(self):
+        return self.contenido
+
+
